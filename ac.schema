@@ -1,0 +1,11 @@
+timeout = integer()
+lirc_conf = string()
+focus_time = float()
+
+screen = int_list(min=4, max=4)
+digit0 = int_list(min=4, max=4)
+digit1 = int_list(min=4, max=4)
+mode_cool = int_list(min=4, max=4)
+mode_dry = int_list(min=4, max=4)
+mode_fan = int_list(min=4, max=4)
+fan_power = int_list(min=4, max=4)
