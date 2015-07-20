@@ -1,5 +1,5 @@
-import logging
-logging.getLogger().setLevel(logging.DEBUG)
+#import logging
+#logging.getLogger().setLevel(logging.DEBUG)
 
 from flask import Flask, request
 from flask_restful import reqparse, Resource, Api
