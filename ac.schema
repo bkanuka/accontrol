@@ -1,4 +1,4 @@
-timeout = integer()
+timeout = float()
 lirc_conf = string()
 focus_time = float()
 

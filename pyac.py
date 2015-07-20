@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import numpy as np
 from SimpleCV import *
 import tempfile
@@ -90,7 +92,7 @@ class AC:
             self.remote.send_once('AC', command)
 
             self.lastwake = time.time()
-            time.sleep(0.2)
+            time.sleep(0.3)
             if command == 'POWER':
                 time.sleep(0.5)
 
@@ -99,37 +101,33 @@ class AC:
             logging.error("Known commands: {}".format(self.remote.codes['AC']))
 
     def wake(self):
-        logging.debug("Waking screen")
-        self.send('fan_high')
         brightness = self._getBrightness()
-        if brightness < 100:
-            self.wake()
+        while brightness < 100:
+            logging.debug("Waking screen")
+            self.send('fan_high')
+            brightness = self._getBrightness()
+        while brightness > 210:
+            time.sleep(0.1)
+            brightness = self._getBrightness()
 
-    def _getBrightness(self):
+    def _getImg(self):
         img = self.camera.getImage().toRGB()
         img = img.crop(*self.conf['screen'])
         img = img.splitChannels()[1]
+        return img
+
+    def _getBrightness(self):
+        img = self._getImg()
         mean = img.meanColor()[0]
         logging.debug("Mean Color: {}".format(mean))
         return mean
 
     def getImg(self):
+        logging.debug("Getting Image")
         if time.time() - self.lastwake > self.timeout:
             self.wake()
 
-        logging.debug("Getting Image")
-        img = self.camera.getImage().toRGB()
-        img = img.crop(*self.conf['screen'])
-        img = img.splitChannels()[1]
-        mean = img.meanColor()[0]
-        logging.debug("Mean Color: {}".format(mean))
-        while mean > 220:
-            img = self.camera.getImage().toRGB()
-            img = img.crop(*self.conf['screen'])
-            img = img.splitChannels()[1]
-            mean = img.meanColor()[0]
-            logging.debug("Mean Color: {}".format(mean))
-            time.sleep(0.1)
+        img = self._getImg()
 
         if logging.getLogger().isEnabledFor(logging.DEBUG):
             stream_img = img.copy()
@@ -166,6 +164,7 @@ class AC:
         while temp > 40:
             logging.warning('Tempurature in F')
             self.send('f_c')
+            time.sleep(0.2)
             temp = self.getTemp()
 
         return temp
@@ -251,11 +250,6 @@ class AC:
 
         return fan
 
-    def getTarget(self):
-        self.send('up')
-        self.send('down')
-        return self.getTemp()
-
     def setTemp(self, target):
         self.setMode('cool')
         current = self.getTemp()
@@ -268,13 +262,15 @@ class AC:
             for i in range(target - current):
                 self.send('up')
 
+        time.sleep(0.3)
         current = self.getTemp()
         if current != target:
             self.setTemp(target)
 
     def setMode(self, mode):
-        self.powerOn()
-        self.send(mode)
+        if mode != self.getMode():
+            self.powerOn()
+            self.send(mode)
 
     def powerOn(self):
         while not self.getPower():
@@ -285,3 +281,52 @@ class AC:
         while self.getPower():
             logging.info('Powering OFF')
             self.send('power')
+    
+    def getStatus(self):
+        mode = self.getMode()
+        temp = self.getTemp()
+
+        r = {
+                'power': bool(mode),
+            }
+
+        if mode == 'cool':
+            r['target_temp'] = temp
+        else:
+            r['room_temp'] = temp
+
+        if mode:
+            r['mode'] = mode
+            fan = ac.getFan()
+            r['fan'] = fan
+            
+        return r
+
+
+
+if __name__ == "__main__":
+    usage = """pyac.py
+
+    Usage:
+        pyac.py status
+        pyac.py power (on|off)
+        pyac.py temp <temp>
+
+    """
+
+    import logging
+    logging.getLogger().setLevel(logging.DEBUG)
+
+    from docopt import docopt
+    args = docopt(usage)
+
+    ac = AC()
+    if args['status']:
+        print ac.getStatus()
+    elif args['power']:
+        if args['on']:
+            ac.powerOn()
+        else:
+            ac.powerOff()
+    elif args['temp']:
+        ac.setTemp(int(args['<temp>']))
