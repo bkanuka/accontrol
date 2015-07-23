@@ -190,7 +190,9 @@ class AC:
 
             c_sum = c.sum()
 
-            Image(c * 255).save('debug/c_{}.png'.format(n))
+            if logging.getLogger().isEnabledFor(logging.DEBUG):
+                Image(c * 255).save('debug/c_{}.png'.format(n))
+
             if c_sum > d_coor:
                 d_coor = c_sum
                 d = n
@@ -237,7 +239,9 @@ class AC:
         fan = img.crop(*self.conf['fan_power'])
         fan = autothreshold(fan - 20)
         fan = fan.invert()
-        fan.save('debug/fan.png')
+        if logging.getLogger().isEnabledFor(logging.DEBUG):
+            fan.save('debug/fan.png')
+
         fan = fan.getGrayNumpy().astype(int).sum()
         self.fanraw = fan
 
@@ -250,7 +254,37 @@ class AC:
 
         return fan
 
+    def setFan(self, target):
+        if target > 3:
+            logging.warning("Max fan speed is 3")
+            target = 3
+        if target < 1:
+            logging.warning("Min fan speed is 1")
+            target = 1
+
+        self.powerOn()
+
+        if target != self.getFan():
+            if target == 1:
+                self.send('fan_low')
+            if target == 2:
+                self.send('fan_medium')
+            if target == 3:
+                self.send('fan_high')
+        
+        current = self.getFan()
+        if current != target:
+            self.setFan(target)
+
+
     def setTemp(self, target):
+        if target > 30:
+            logging.warning("Max temp is 30")
+            target = 30
+        if target < 18:
+            logging.warning("Min temp is 18")
+            target = 18
+
         self.setMode('cool')
         current = self.getTemp()
         logging.info('Current setting: {}'.format(current))
@@ -266,11 +300,19 @@ class AC:
         current = self.getTemp()
         if current != target:
             self.setTemp(target)
+    
+    def setMode(self, target):
+        if target.lower() in ['fan', 'cool', 'dry']:
+            if target != self.getMode():
+                self.powerOn()
+                self.send(target)
 
-    def setMode(self, mode):
-        if mode != self.getMode():
-            self.powerOn()
-            self.send(mode)
+            current = self.getMode()
+            if current != target:
+                self.setMode(target)
+        else:
+            logging.warning("Invalid mode: {}".format(target) )
+
 
     def powerOn(self):
         while not self.getPower():
@@ -311,6 +353,8 @@ if __name__ == "__main__":
         pyac.py status
         pyac.py power (on|off)
         pyac.py temp <temp>
+        pyac.py fan (1|2|3)
+        pyac.py mode (cool|fan|dry)
 
     """
 
@@ -323,10 +367,28 @@ if __name__ == "__main__":
     ac = AC()
     if args['status']:
         print ac.getStatus()
+
     elif args['power']:
         if args['on']:
             ac.powerOn()
         else:
             ac.powerOff()
+
     elif args['temp']:
         ac.setTemp(int(args['<temp>']))
+
+    elif args['mode']:
+        if args['fan']:
+            ac.setMode('fan')
+        elif args['cool']:
+            ac.setMode('cool')
+        elif args['dry']:
+            ac.setMode('dry')
+
+    elif args['fan']:
+        if args['1']:
+            ac.setFan(1)
+        elif args['2']:
+            ac.setFan(2)
+        elif args['3']:
+            ac.setFan(3)
