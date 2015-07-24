@@ -339,7 +339,7 @@ class AC:
 
         if mode:
             r['mode'] = mode
-            fan = ac.getFan()
+            fan = self.getFan()
             r['fan'] = fan
             
         return r

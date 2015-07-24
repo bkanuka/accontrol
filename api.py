@@ -2,7 +2,7 @@
 #logging.getLogger().setLevel(logging.DEBUG)
 
 from flask import Flask, request
-from flask_restful import reqparse, Resource, Api
+from flask_restful import reqparse, Resource, Api, abort
 
 app = Flask(__name__)
 api = Api(app)
@@ -10,30 +10,35 @@ api = Api(app)
 parser = reqparse.RequestParser()
 parser.add_argument('temp', type=int)
 parser.add_argument('power', type=str)
+parser.add_argument('mode', type=str)
 
 from pyac import AC
 ac = AC()
 
 class Main(Resource):
     def get(self):
-        mode = ac.getMode()
-        temp = ac.getTemp()
+        args = parser.parse_args()
 
-        r = {
-                'power': bool(mode),
-            }
+        if args.get('power', False):
+            if args['power'].lower() in ['off', 'false']:
+                ac.powerOff()
+            elif args['power'].lower() in ['on', 'true']:
+                ac.powerOn()
+            else:
+                abort(400, 
+                        message="Invalid power command: {}".format(args['power']))
 
-        if mode == 'cool':
-            r['target_temp'] = temp
-        else:
-            r['room_temp'] = temp
+        if args.get('temp', False):
+            ac.setTemp(args['temp'])
 
-        if mode:
-            r['mode'] = mode
+        if args.get('mode', False):
+            if args['mode'].lower() in ['fan', 'cool', 'dry']:
+                ac.setMode(args['mode'])
+            else:
+                abort(400, 
+                        message="Invalid mode command: {}".format(args['mode']))
 
-            fan = ac.getFan()
-            r['fan'] = fan
-            
+        r = ac.getStatus()
         return r
 
     def put(self):
@@ -44,6 +49,7 @@ class Main(Resource):
                 return True
             elif args['power'].lower() in ['on', 'true']:
                 ac.powerOn()
+                return True
             else:
                 abort(400, 
                         message="Invalid power command: {}".format(args['power']))
@@ -63,6 +69,7 @@ class Temp(Resource):
         return r
     
     def put(self):
+        args = parser.parse_args()
         temp = int(request.form['temp'])
         ac.setTemp(temp)
         r = ac.getTemp()
