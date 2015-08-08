@@ -8,6 +8,8 @@ import sys
 import time
 from lirc import Lirc
 
+from w1thermsensor import W1ThermSensor
+
 from configobj import ConfigObj
 from validate import Validator
 
@@ -83,6 +85,8 @@ class AC:
 
         self.remote = Lirc(self.conf['lirc_conf'])
         self.getImg()
+
+        self.room_sensor = W1ThermSensor()
 
     def send(self, command):
         command = command.upper()
@@ -324,18 +328,22 @@ class AC:
             logging.info('Powering OFF')
             self.send('power')
     
+    def getRoomTemp(self):
+        room_temp = self.room_sensor.get_temperature()
+        return room_temp
+
     def getStatus(self):
         mode = self.getMode()
         temp = self.getTemp()
+        room_temp = self.getRoomTemp()
 
         r = {
                 'power': bool(mode),
+                'room_temp': room_temp,
             }
 
         if mode == 'cool':
             r['target_temp'] = temp
-        else:
-            r['room_temp'] = temp
 
         if mode:
             r['mode'] = mode
