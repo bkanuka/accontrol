@@ -1,6 +1,4 @@
-#import logging
-#logging.getLogger().setLevel(logging.DEBUG)
-
+import sys
 from flask import Flask, request
 from flask_restful import reqparse, Resource, Api, abort
 
@@ -11,6 +9,10 @@ parser = reqparse.RequestParser()
 parser.add_argument('temp', type=int)
 parser.add_argument('power', type=str)
 parser.add_argument('mode', type=str)
+
+if len(sys.argv) > 1 and sys.argv[1] == '--debug':
+    import logging
+    logging.getLogger().setLevel(logging.DEBUG)
 
 from pyac import AC
 ac = AC()

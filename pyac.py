@@ -109,8 +109,9 @@ class AC:
         while brightness < 100:
             logging.debug("Waking screen")
             self.send('fan_high')
+            time.sleep(0.2)
             brightness = self._getBrightness()
-        while brightness > 210:
+        while brightness > 190:
             time.sleep(0.1)
             brightness = self._getBrightness()
 
