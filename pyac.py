@@ -96,7 +96,7 @@ class AC:
             self.remote.send_once('AC', command)
 
             self.lastwake = time.time()
-            time.sleep(0.3)
+            time.sleep(0.2)
             if command == 'POWER':
                 time.sleep(0.5)
 
@@ -105,13 +105,13 @@ class AC:
             logging.error("Known commands: {}".format(self.remote.codes['AC']))
 
     def wake(self):
+        logging.debug("Waking screen")
+        self.send('fan_high')
+        time.sleep(0.1)
         brightness = self._getBrightness()
-        while brightness < 100:
-            logging.debug("Waking screen")
-            self.send('fan_high')
-            time.sleep(0.2)
-            brightness = self._getBrightness()
-        while brightness > 190:
+        while (brightness < 100) or (brightness > 205):
+            if time.time() - self.lastwake > self.timeout:
+                self.send('fan_high')
             time.sleep(0.1)
             brightness = self._getBrightness()
 
