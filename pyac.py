@@ -210,7 +210,7 @@ class AC:
                 "dry": self.conf['mode_dry'], 
                 "fan": self.conf['mode_fan']}
 
-        s = 0.17
+        s = 0.10
         mode = False
 
         for m, bb in modes.items():

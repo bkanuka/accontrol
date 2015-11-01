@@ -1,6 +1,7 @@
 import sys
 from flask import Flask, request
 from flask_restful import reqparse, Resource, Api, abort
+import requests
 
 app = Flask(__name__)
 api = Api(app)
@@ -16,6 +17,16 @@ if len(sys.argv) > 1 and sys.argv[1] == '--debug':
 
 from pyac import AC
 ac = AC()
+
+def send_temp(temp):
+    idx = 18
+    baseurl = "http://ha.home.bkanuka.com/json.htm"
+    params = {"type":"command",
+            "param": "setsetpoint",
+            "idx": idx,
+            "setpoint": temp}
+    r = requests.get(baseurl, params=params)
+    return r.json()
 
 class Main(Resource):
     def get(self):
@@ -41,6 +52,7 @@ class Main(Resource):
                         message="Invalid mode command: {}".format(args['mode']))
 
         r = ac.getStatus()
+
         return r
 
     def put(self):
